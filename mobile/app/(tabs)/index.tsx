@@ -1,98 +1,402 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+﻿import { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  RefreshControl
+} from 'react-native';
+import { Search, MapPin, Star, Users, Wifi, Droplets, Home } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const [hostels, setHostels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Sample hostel images for fallback
+  const sampleImages = [
+    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
+  ];
+
+  // Fetch hostels on component mount
+  useEffect(() => {
+    fetchHostels();
+  }, []);
+
+  const fetchHostels = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/hostels');
+      const data = await response.json();
+      if (data.success) {
+        // Add image URLs to hostels if they don't have one
+        const hostelsWithImages = data.data.map((hostel: any, index: number) => ({
+          ...hostel,
+          imageUrl: hostel.imageUrl || sampleImages[index % sampleImages.length]
+        }));
+        setHostels(hostelsWithImages);
+      }
+    } catch (error) {
+      console.error('Error fetching hostels:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchHostels();
+  };
+
+  const formatPrice = (price: number) => {
+    return `₹${price?.toLocaleString('en-IN') || '0'}/month`;
+  };
+
+  const categories = [
+    { id: 'all', label: 'All Hostels' },
+    { id: 'boys', label: 'Boys Hostels' },
+    { id: 'girls', label: 'Girls Hostels' },
+    { id: 'co-living', label: 'Co-Living' },
+  ];
+
+  const filteredHostels = selectedCategory === 'all' 
+    ? hostels 
+    : hostels.filter(hostel => hostel.category === selectedCategory);
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Text style={styles.greeting}>Find Your Perfect Stay</Text>
+          <Text style={styles.subtitle}>Browse hostels near colleges & offices</Text>
+        </View>
+      </View>
+
+      {/* Search Bar */}
+      <TouchableOpacity 
+        style={styles.searchBar}
+        onPress={() => router.push('/search')}
+      >
+        <Search size={20} color="#666" />
+        <Text style={styles.searchPlaceholder}>Search hostels, locations, amenities...</Text>
+      </TouchableOpacity>
+
+      {/* Categories */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoriesContainer}
+      >
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.categoryButton,
+              selectedCategory === category.id && styles.categoryButtonActive
+            ]}
+            onPress={() => setSelectedCategory(category.id)}
+          >
+            <Text style={[
+              styles.categoryText,
+              selectedCategory === category.id && styles.categoryTextActive
+            ]}>
+              {category.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Hostels List */}
+      <ScrollView 
+        style={styles.hostelsContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={styles.loadingText}>Loading hostels...</Text>
+          </View>
+        ) : filteredHostels.length === 0 ? (
+          <View style={styles.noResults}>
+            <Home size={48} color="#9CA3AF" />
+            <Text style={styles.noResultsTitle}>No hostels found</Text>
+            <Text style={styles.noResultsSubtitle}>Try a different category</Text>
+          </View>
+        ) : (
+          filteredHostels.map((hostel, index) => (
+            <TouchableOpacity 
+              key={hostel.id} 
+              style={styles.hostelCard}
+              onPress={() => {
+                window.location.href = `/hostel/${hostel.id}`;
+              }}
+            >
+              <View style={styles.hostelImageContainer}>
+                <Image
+                  source={{ uri: hostel.imageUrl || sampleImages[index % sampleImages.length] }}
+                  style={styles.hostelImage}
+                />
+                <View style={styles.ratingBadge}>
+                  <Star size={12} color="white" fill="white" />
+                  <Text style={styles.ratingText}>{hostel.rating || 4.0}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.hostelInfo}>
+                <Text style={styles.hostelName}>{hostel.name}</Text>
+                
+                <View style={styles.locationContainer}>
+                  <MapPin size={14} color="#666" />
+                  <Text style={styles.locationText}>{hostel.location}</Text>
+                </View>
+                
+                <View style={styles.amenitiesContainer}>
+                  <View style={styles.amenityItem}>
+                    <Users size={14} color="#666" />
+                    <Text style={styles.amenityText}>{hostel.category || 'General'}</Text>
+                  </View>
+                  {hostel.wifi && (
+                    <View style={styles.amenityItem}>
+                      <Wifi size={14} color="#666" />
+                      <Text style={styles.amenityText}>WiFi</Text>
+                    </View>
+                  )}
+                  {hostel.ac && (
+                    <View style={styles.amenityItem}>
+                      <Droplets size={14} color="#666" />
+                      <Text style={styles.amenityText}>AC</Text>
+                    </View>
+                  )}
+                </View>
+                
+                <View style={styles.priceContainer}>
+                  <Text style={styles.price}>{formatPrice(hostel.pricePerMonth)}</Text>
+                  <TouchableOpacity 
+                    style={styles.viewButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      window.location.href = `/hostel/${hostel.id}`;
+                    }}
+                  >
+                    <Text style={styles.viewButtonText}>View Details</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: 'white',
+  },
+  headerContent: {
+    marginTop: 10,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: 'white',
+    marginHorizontal: 20,
+    marginTop: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  stepContainer: {
-    gap: 8,
+  searchPlaceholder: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#9CA3AF',
+    flex: 1,
+  },
+  categoriesContainer: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  categoryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  categoryButtonActive: {
+    backgroundColor: '#3B82F6',
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  categoryTextActive: {
+    color: 'white',
+  },
+  hostelsContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#666',
+    fontSize: 16,
+  },
+  noResults: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  noResultsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 12,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  noResultsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  hostelCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  hostelImageContainer: {
+    position: 'relative',
+    height: 180,
+    backgroundColor: '#E5E7EB',
+  },
+  hostelImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  ratingBadge: {
     position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  ratingText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  hostelInfo: {
+    padding: 16,
+  },
+  hostelName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+  },
+  amenitiesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+    gap: 10,
+  },
+  amenityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  amenityText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 6,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  price: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#3B82F6',
+  },
+  viewButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  viewButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
