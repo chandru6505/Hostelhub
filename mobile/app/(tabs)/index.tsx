@@ -28,15 +28,23 @@ export default function HomeScreen() {
     'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
   ];
 
-  // Fetch hostels on component mount
+  // Fetch hostels when category changes
   useEffect(() => {
-    fetchHostels();
-  }, []);
+    fetchHostels(selectedCategory);
+  }, [selectedCategory]);
 
-  const fetchHostels = async () => {
+  const fetchHostels = async (category = 'all') => {
     try {
-      const response = await fetch('http://localhost:5000/api/hostels');
+      // Use existing API with type parameter
+      const url = category === 'all' 
+        ? 'http://localhost:5000/api/hostels'
+        : `http://localhost:5000/api/hostels?type=${category}`;
+      
+      console.log("Fetching from:", url);
+      
+      const response = await fetch(url);
       const data = await response.json();
+      
       if (data.success) {
         // Add image URLs to hostels if they don't have one
         const hostelsWithImages = data.data.map((hostel: any, index: number) => ({
@@ -53,9 +61,14 @@ export default function HomeScreen() {
     }
   };
 
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setLoading(true);
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
-    fetchHostels();
+    fetchHostels(selectedCategory);
   };
 
   const formatPrice = (price: number) => {
@@ -69,9 +82,10 @@ export default function HomeScreen() {
     { id: 'co-living', label: 'Co-Living' },
   ];
 
-  const filteredHostels = selectedCategory === 'all' 
-    ? hostels 
-    : hostels.filter(hostel => hostel.category === selectedCategory);
+  // Remove local filtering - now handled by API
+  // const filteredHostels = selectedCategory === 'all' 
+  //   ? hostels 
+  //   : hostels.filter(hostel => hostel.category === selectedCategory);
 
   return (
     <View style={styles.container}>
@@ -105,7 +119,7 @@ export default function HomeScreen() {
               styles.categoryButton,
               selectedCategory === category.id && styles.categoryButtonActive
             ]}
-            onPress={() => setSelectedCategory(category.id)}
+            onPress={() => handleCategorySelect(category.id)}
           >
             <Text style={[
               styles.categoryText,
@@ -129,14 +143,14 @@ export default function HomeScreen() {
             <ActivityIndicator size="large" color="#3B82F6" />
             <Text style={styles.loadingText}>Loading hostels...</Text>
           </View>
-        ) : filteredHostels.length === 0 ? (
+        ) : hostels.length === 0 ? (
           <View style={styles.noResults}>
             <Home size={48} color="#9CA3AF" />
             <Text style={styles.noResultsTitle}>No hostels found</Text>
             <Text style={styles.noResultsSubtitle}>Try a different category</Text>
           </View>
         ) : (
-          filteredHostels.map((hostel, index) => (
+          hostels.map((hostel, index) => (
             <TouchableOpacity 
               key={hostel.id} 
               style={styles.hostelCard}
@@ -166,15 +180,15 @@ export default function HomeScreen() {
                 <View style={styles.amenitiesContainer}>
                   <View style={styles.amenityItem}>
                     <Users size={14} color="#666" />
-                    <Text style={styles.amenityText}>{hostel.category || 'General'}</Text>
+                    <Text style={styles.amenityText}>{hostel.type || 'General'}</Text>
                   </View>
-                  {hostel.wifi && (
+                  {hostel.amenities && hostel.amenities.includes('WiFi') && (
                     <View style={styles.amenityItem}>
                       <Wifi size={14} color="#666" />
                       <Text style={styles.amenityText}>WiFi</Text>
                     </View>
                   )}
-                  {hostel.ac && (
+                  {hostel.amenities && hostel.amenities.includes('AC') && (
                     <View style={styles.amenityItem}>
                       <Droplets size={14} color="#666" />
                       <Text style={styles.amenityText}>AC</Text>

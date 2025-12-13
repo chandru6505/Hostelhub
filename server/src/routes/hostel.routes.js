@@ -16,5 +16,7 @@ router.get("/locations", hostelController.getHostelLocations);
 
 // GET /api/hostels/:id - Get single hostel by ID
 router.get("/:id", hostelController.getHostelById);
+// GET /api/hostels/filter - Filter by category
+// router.get("/filter", hostelController.filterByCategory); // TODO: Add controller method
 
 module.exports = router;

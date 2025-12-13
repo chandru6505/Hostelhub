@@ -67,6 +67,29 @@ const searchHostels = (req, res) => {
     });
   }
 };
+// Filter hostels by category
+exports.filterByCategory = async (req, res) => {
+  try {
+    const { category } = req.query;
+    
+    let filter = {};
+    
+    if (category === 'boys') {
+      filter = { type: 'boys' };
+    } else if (category === 'girls') {
+      filter = { type: 'girls' };
+    } else if (category === 'co-living') {
+      filter = { type: 'co-living' };
+    } else if (category === 'all') {
+      filter = {};
+    }
+    
+    const hostels = await Hostel.find(filter);
+    res.json({ success: true, data: hostels });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
 
 const getHostelTypes = (req, res) => {
   try {
